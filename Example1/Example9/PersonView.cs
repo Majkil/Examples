@@ -16,10 +16,11 @@ namespace Example9
         PersonController controller;
         Boolean initialized = false;
         Boolean added = false;
+        Boolean refreshgrid = false;
         public PersonView()
         {
             InitializeComponent();
-            controller = new PersonController("Data Source=" + Application.StartupPath + "/telnumbers.s3db;Version=3;");
+            controller = new PersonController();
             
             
             //this variable contains the list of persons
@@ -34,14 +35,16 @@ namespace Example9
         {
             personsGridView.Rows.Clear();
             personsGridView.Columns.Clear();
+            personsGridView.Columns.Add("ID", "ID");
             personsGridView.Columns.Add("Name", "Name");
             personsGridView.Columns.Add("Surname", "Surname");
             personsGridView.Columns.Add("Telnumber", "Telephone Number");
             personsGridView.Columns.Add("Age", "Age");
             foreach (PersonModel p in controller.getPersons())
             {
-                personsGridView.Rows.Add(p.Name, p.Surname, p.Telnumber, p.Age);
+                personsGridView.Rows.Add(p.Id,p.FirstName, p.SecondName, p.TelNumber, p.Age);
             }
+            added = false;
             
         }
 
@@ -55,17 +58,23 @@ namespace Example9
             if (initialized && added && e.RowIndex == personsGridView.NewRowIndex-1)
             {
                 //can do validation here
-                PersonModel newPerson = new PersonModel(personsGridView.Rows[e.RowIndex].Cells[0].Value.ToString(),
-                    personsGridView.Rows[e.RowIndex].Cells[1].Value.ToString(),
+                PersonModel newPerson = new PersonModel(personsGridView.Rows[e.RowIndex].Cells[1].Value.ToString(),
                     personsGridView.Rows[e.RowIndex].Cells[2].Value.ToString(),
-                    Convert.ToInt32(personsGridView.Rows[e.RowIndex].Cells[3].Value));
+                    personsGridView.Rows[e.RowIndex].Cells[3].Value.ToString(),
+                    0);
+                    //Convert.ToInt32(personsGridView.Rows[e.RowIndex].Cells[4].Value));
 
-                   controller.addPerson(newPerson);
+                   newPerson = controller.addPerson(newPerson);
                 
                 //MessageBox.Show("New Person Added");
                 listLengthLabel.Text = controller.getPersons().Count().ToString();
+                //updateGrid();
+                personsGridView.Rows[e.RowIndex].Cells[0].Value = newPerson.Id;
+                personsGridView.Rows[e.RowIndex].Cells[1].Value = newPerson.FirstName;
+                personsGridView.Rows[e.RowIndex].Cells[2].Value = newPerson.SecondName;
+                personsGridView.Rows[e.RowIndex].Cells[3].Value = newPerson.TelNumber;
+                personsGridView.Rows[e.RowIndex].Cells[4].Value = newPerson.Age;
 
-                added = false;
             }//else here for updating
 
         }
@@ -82,15 +91,19 @@ namespace Example9
             {
                // controller.getPersons().RemoveAt(e.Row.Index);
                 //find the telephone number of the guy I'm going to delete
-                string name = e.Row.Cells[0].ToString();
-                string surname = e.Row.Cells[1].ToString();
-                string telnumber = e.Row.Cells[2].ToString();
+                long? id = (long?)e.Row.Cells[0].Value;
 
-                controller.getPersons().RemoveAll(person => person.Telnumber == telnumber);
+                PersonModel personToDelete = new PersonModel();
+                personToDelete.Id = id;
+
+                controller.deletePerson(personToDelete);
+
+               // controller.getPersons().RemoveAll(person => person.Id == id);
 
 
 
                 listLengthLabel.Text = controller.getPersons().Count().ToString();
+                updateGrid();
             }
             else
             {
@@ -101,23 +114,6 @@ namespace Example9
 
         private void personsGridView_CellValidating(object sender, DataGridViewCellValidatingEventArgs e)
         {
-            
-            
-            
-            //saves the value before the update has happened
-          //  MessageBox.Show(personsGridView.Rows[e.RowIndex].Cells[e.ColumnIndex].Value.ToString());
-            
-            //get the person to find
-            string personName = personsGridView.Rows[e.RowIndex].Cells[0].Value.ToString();
-            string personSurname = personsGridView.Rows[e.RowIndex].Cells[1].Value.ToString();
-            string telNum = personsGridView.Rows[e.RowIndex].Cells[2].Value.ToString();
-
-
-            PersonToUpdate = new PersonModel(personName, personSurname, telNum, 0);
-
-            PersonToUpdate = controller.getPersons().Find(person => person.Telnumber == PersonToUpdate.Telnumber && person.Name == PersonToUpdate.Name && person.Surname == PersonToUpdate.Surname);
-            
-
 
         }
 
@@ -130,15 +126,28 @@ namespace Example9
 
         private void personsGridView_CellValidated(object sender, DataGridViewCellEventArgs e)
         {
-            PersonToUpdate.Name = personsGridView.Rows[e.RowIndex].Cells[0].Value.ToString();
-            PersonToUpdate.Surname = personsGridView.Rows[e.RowIndex].Cells[1].Value.ToString();
-            PersonToUpdate.Telnumber = personsGridView.Rows[e.RowIndex].Cells[2].Value.ToString();
 
-            
-            //MessageBox.Show("updated");
         }
 
-     
-      
+        private void personsGridView_RowValidated(object sender, DataGridViewCellEventArgs e)
+        {
+            try
+            {
+                PersonToUpdate = new PersonModel();
+                PersonToUpdate.Id = Convert.ToInt64(personsGridView.Rows[e.RowIndex].Cells[0].Value);
+                PersonToUpdate.FirstName = personsGridView.Rows[e.RowIndex].Cells[1].Value.ToString();
+                PersonToUpdate.SecondName = personsGridView.Rows[e.RowIndex].Cells[2].Value.ToString();
+                PersonToUpdate.TelNumber = personsGridView.Rows[e.RowIndex].Cells[3].Value.ToString();
+                PersonToUpdate.Age = (int)personsGridView.Rows[e.RowIndex].Cells[4].Value;
+                controller.updatePerson(PersonToUpdate);
+            }
+            catch (Exception n) { }
+
+        }
+
+        private void personsGridView_RowValidating(object sender, DataGridViewCellCancelEventArgs e)
+        {
+
+        }
     }
 }
